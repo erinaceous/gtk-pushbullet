@@ -69,16 +69,26 @@ class TrayIcon(GObject.Object, Peas.Activatable):
         for notification in notifications.values():
             notification.show()
 
+    def trayicon_clear(self, widget, data=None):
+        keys = list(notifications.keys())
+        for ident in keys:
+            notifications[ident].close()
+            del notifications[ident]
+        tray.change_icon(len(notifications))
+
     def trayicon_quit(self, widget, data=None):
         exit()
 
     def trayicon_popup(self, widget, button, time, data=None):
         self.menu = Gtk.Menu()
         menuitem_show = Gtk.MenuItem("Show closed notifications")
+        menuitem_clear = Gtk.MenuItem("Clear notifications")
         menuitem_quit = Gtk.MenuItem("Quit")
         menuitem_show.connect("activate", self.trayicon_activate)
+        menuitem_clear.connect("activate", self.trayicon_clear)
         menuitem_quit.connect("activate", self.trayicon_quit)
         self.menu.append(menuitem_show)
+        self.menu.append(menuitem_clear)
         self.menu.append(menuitem_quit)
         self.menu.show_all()
         self.menu.popup(
