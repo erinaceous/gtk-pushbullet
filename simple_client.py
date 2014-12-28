@@ -33,7 +33,7 @@ import json
 
 API_KEY = None
 STREAM = 'wss://stream.pushbullet.com/websocket/{api_key}'
-ICON_FORMAT = 'icons/pushbullet{num}.png'
+ICON_FORMAT = '/usr/share/icons/pushbullet/pushbullet{num}.png'
 
 
 notifications = {}
