@@ -26,6 +26,8 @@ from gi.repository import Notify, GdkPixbuf, Gio, GLib, GObject, Peas, PeasGtk, 
 import threading
 import websocket
 import argparse
+import httplib
+import urllib
 import base64
 import time
 import json
@@ -39,6 +41,7 @@ ICON_FORMAT = '/usr/share/icons/pushbullet/pushbullet{num}.png'
 notifications = {}
 tray = None
 wst = None
+api_key = API_KEY
 
 
 def parse_args():
@@ -101,8 +104,23 @@ class TrayIcon(GObject.Object, Peas.Activatable):
         del self.staticon
 
 
-def dismiss(*args, **kwargs):
-    print(args, kwargs)
+def dismiss(notification, iden, *args):
+    source_user_id, source_device_id, notification_id = iden.split('_')
+    headers = {'Authorization': 'Bearer %s' % api_key,
+               'Content-type': 'application/json'}
+    data = json.dumps({'type': 'push', 'push': {
+        'type': 'dismissal',
+        'package_name': 'me.odj.pushbullet.gtk',
+        'notification_id': notification_id,
+        'notification_tag': None,
+        'source_user_iden': source_user_id
+    }})
+    conn = httplib.HTTPSConnection('api.pushbullet.com')
+    conn.request('POST', '/v2/ephemerals', data, headers)
+    response = conn.getresponse()
+    out = response.read()
+    conn.close()
+    print(headers, data, out)
 
 
 def notify(title, description, iden, icon=None):
@@ -111,6 +129,7 @@ def notify(title, description, iden, icon=None):
         notification.update(title, description)
     else:
         notification = Notify.Notification.new(title, description)
+        notification.add_action(iden, "Dismiss", dismiss, None, None)
     notification.set_timeout(0)
     notification.set_urgency(Notify.Urgency.LOW)
 
@@ -119,8 +138,6 @@ def notify(title, description, iden, icon=None):
         pbl.write(bytes(base64.b64decode(icon)))
         pbl.close()
         notification.set_icon_from_pixbuf(pbl.get_pixbuf())
-
-    # notification.add_action('1', "Dismiss", dismiss, None, None)
 
     notifications[iden] = notification
     notification.show()
@@ -168,9 +185,10 @@ class WebSocketThread(threading.Thread):
 
 if __name__ == '__main__':
     args = parse_args()
-    Notify.init("PushBullet")
+    Notify.init("me.odj.pushbullet.gtk")
     tray = TrayIcon()
     tray.do_activate()
+    api_key = args.api_key
     wst = WebSocketThread(api_key=args.api_key)
     wst.start()
     Gtk.main()
